@@ -2,6 +2,8 @@
 
 import 'package:artemis/generator/data/data.dart';
 
+import '../schema/options.dart';
+
 typedef _IterableFunction<T, U> = U Function(T i);
 typedef _MergeableFunction<T> = T Function(T oldT, T newT);
 
@@ -79,6 +81,9 @@ Iterable<T> _removeDuplicatedBy<T, U>(
   }).toList();
 }
 
+/// List data type prefix
+final String listPrefix = 'List<';
+
 /// normalizes name
 /// _variable => $variable
 /// __typename => $$typename
@@ -101,6 +106,14 @@ String normalizeName(String name) {
   if (dartKeywords.contains(name.toLowerCase())) {
     return 'kw\$$name';
   }
+
+//  if (name.startsWith(listPrefix)) {
+//    var prefixIndex = name.indexOf(listPrefix) + listPrefix.length;
+//    var prefix = name.substring(0, listPrefix.length);
+//    var infix = name.substring(prefixIndex, prefixIndex + 1);
+//    var suffix = name.substring(prefixIndex + 1);
+//    return '$prefix${infix.toUpperCase()}$suffix';
+//  }
 
   return name;
 }
@@ -156,4 +169,64 @@ bool hasValue(Object obj) {
     return obj != null && obj.isNotEmpty;
   }
   return obj != null && obj.toString().isNotEmpty;
+}
+
+/// Check if values are equal
+bool equalsIgnoreCase(String a, String b) =>
+    (a == null && b == null) ||
+    (a != null && b != null && a.toLowerCase() == b.toLowerCase());
+
+/// a list of sqlite types that can be stored in db
+List<String> sqliteTypes = const [
+  'int',
+  'double',
+  'String',
+  'bool',
+  'Uint8List'
+];
+
+/// Field type of enum
+const String enumType = 'enum';
+
+/// A constant specifying query response type object
+const String QUERY_RESPONSE = 'QueryResponse';
+const String EMPTY_QUERY_RESPONSE = 'EmptyQueryResponse';
+
+/// A constant specifying query list response type object
+const String QUERY_LIST_RESPONSE = 'QueryListResponse';
+const String EMPTY_QUERY_LIST_RESPONSE = 'EmptyQueryListResponse';
+
+/// A constant specifying query detail response type object
+const String QUERY_DETAIL_RESPONSE = 'QueryDetailResponse';
+
+/// Get field mappings used in the current schema map
+Map<String, String> getFieldMappings(Iterable<QueryDefinition> queries) {
+  final definitions =
+      queries.map((e) => e.classes.map((e) => e)).expand((e) => e).toList();
+
+  final fragments = definitions.whereType<FragmentClassDefinition>();
+  final classes = definitions.whereType<ClassDefinition>();
+  final enums = definitions.whereType<EnumDefinition>();
+
+  final enumNames = enums.map((e) => e.name.namePrintable);
+
+  final allProperties = fragments
+      .map((e) => e.properties)
+      .expand((element) => element)
+      .toList()
+      .followedBy(classes.map((e) => e.properties).expand((element) => element))
+      .toList()
+      .fold<Map<String, String>>(<String, String>{}, (acc, element) {
+    final dataType = element.type.namePrintable;
+    if (enumNames.contains(dataType)) {
+      acc[element.name.name] = enumType;
+    } else if (sqliteTypes.contains(dataType)) {
+      acc[element.name.name] = dataType;
+    } else {
+      print('Other type $dataType');
+      acc[element.name.name] = 'String';
+    }
+    return acc;
+  });
+  return allProperties;
 }

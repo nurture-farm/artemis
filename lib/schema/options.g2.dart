@@ -71,6 +71,9 @@ SchemaMap _$SchemaMapFromJson(Map<String, dynamic> json) {
     output: json['output'] as String,
     schema: json['schema'] as String,
     queriesGlob: json['queries_glob'] as String,
+    metadataFile: json['metadata_file'] as String,
+    entityOutputFolder: json['entity_output_folder'] as String,
+    entities: (json['entities'] as List)?.map((e) => e as String)?.toList(),
     typeNameField: json['type_name_field'] as String ?? '__typename',
     namingScheme: _$enumDecodeNullable(
         _$NamingSchemeEnumMap, json['naming_scheme'],
@@ -82,6 +85,9 @@ Map<String, dynamic> _$SchemaMapToJson(SchemaMap instance) => <String, dynamic>{
       'output': instance.output,
       'schema': instance.schema,
       'queries_glob': instance.queriesGlob,
+      'metadata_file': instance.metadataFile,
+      'entityOutputFolder': instance.entityOutputFolder,
+      'entities': instance.entities,
       'type_name_field': instance.typeNameField,
       'naming_scheme': _$NamingSchemeEnumMap[instance.namingScheme],
     };
@@ -123,3 +129,108 @@ const _$NamingSchemeEnumMap = {
   NamingScheme.pathedWithFields: 'pathedWithFields',
   NamingScheme.simple: 'simple',
 };
+
+GqlMetadataInfo _$GqlMetadataInfoFromJson(Map<String, dynamic> json) {
+  return GqlMetadataInfo(
+    queries: (json['queries'] as List)
+        ?.map((e) =>
+            e == null ? null : GqlQueryInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
+    entities: (json['entities'] as Map<String, dynamic>)?.map(
+      (k, e) => MapEntry(k,
+          e == null ? null : GqlEntityInfo.fromJson(e as Map<String, dynamic>)),
+    ),
+  );
+}
+
+Map<String, dynamic> _$GqlMetadataInfoToJson(GqlMetadataInfo instance) =>
+    <String, dynamic>{
+      'queries': instance.queries?.map((e) => e?.toJson())?.toList(),
+      'entities': instance.entities?.map((k, e) => MapEntry(k, e?.toJson())),
+    };
+
+GqlQueryInfo _$GqlQueryInfoFromJson(Map<String, dynamic> json) {
+  return GqlQueryInfo(
+    operationName: json['operationName'] as String,
+    entryPoint: json['entryPoint'] as String,
+    responseType: json['responseType'] as String,
+    resultField: json['resultField'] as String,
+    deleteIdsField: json['deleteIdsField'] as String,
+    lastFetchedField: json['lastFetchedField'] as String,
+    entity: json['entity'] as String,
+  );
+}
+
+Map<String, dynamic> _$GqlQueryInfoToJson(GqlQueryInfo instance) =>
+    <String, dynamic>{
+      'operationName': instance.operationName,
+      'entryPoint': instance.entryPoint,
+      'responseType': instance.responseType,
+      'resultField': instance.resultField,
+      'deleteIdsField': instance.deleteIdsField,
+      'lastFetchedField': instance.lastFetchedField,
+      'entity': instance.entity,
+    };
+
+GqlEntityInfo _$GqlEntityInfoFromJson(Map<String, dynamic> json) {
+  return GqlEntityInfo(
+    tableName: json['tableName'] as String,
+    pkField: json['pkField'] == null
+        ? null
+        : GqlEntityFieldInfo.fromJson(json['pkField'] as Map<String, dynamic>),
+    indexFields: (json['indexFields'] as List)
+        ?.map((e) => e == null
+            ? null
+            : GqlEntityFieldInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
+    detailField: json['detailField'] == null
+        ? null
+        : GqlEntityFieldInfo.fromJson(
+            json['detailField'] as Map<String, dynamic>),
+    detailFieldInfo: json['detailFieldInfo'] == null
+        ? null
+        : GqlEntityDetailFieldInfo.fromJson(
+            json['detailFieldInfo'] as Map<String, dynamic>),
+  );
+}
+
+Map<String, dynamic> _$GqlEntityInfoToJson(GqlEntityInfo instance) =>
+    <String, dynamic>{
+      'tableName': instance.tableName,
+      'pkField': instance.pkField?.toJson(),
+      'indexFields': instance.indexFields?.map((e) => e?.toJson())?.toList(),
+      'detailField': instance.detailField?.toJson(),
+      'detailFieldInfo': instance.detailFieldInfo?.toJson(),
+    };
+
+GqlEntityFieldInfo _$GqlEntityFieldInfoFromJson(Map<String, dynamic> json) {
+  return GqlEntityFieldInfo(
+    fieldName: json['fieldName'] as String,
+    fieldType: json['fieldType'] as String,
+  );
+}
+
+Map<String, dynamic> _$GqlEntityFieldInfoToJson(GqlEntityFieldInfo instance) =>
+    <String, dynamic>{
+      'fieldName': instance.fieldName,
+      'fieldType': instance.fieldType,
+    };
+
+GqlEntityDetailFieldInfo _$GqlEntityDetailFieldInfoFromJson(
+    Map<String, dynamic> json) {
+  return GqlEntityDetailFieldInfo(
+    listFields: (json['listFields'] as List)?.map((e) => e as String)?.toList(),
+    objectFields:
+        (json['objectFields'] as List)?.map((e) => e as String)?.toList(),
+    otherFields:
+        (json['otherFields'] as List)?.map((e) => e as String)?.toList(),
+  );
+}
+
+Map<String, dynamic> _$GqlEntityDetailFieldInfoToJson(
+        GqlEntityDetailFieldInfo instance) =>
+    <String, dynamic>{
+      'listFields': instance.listFields,
+      'objectFields': instance.objectFields,
+      'otherFields': instance.otherFields,
+    };

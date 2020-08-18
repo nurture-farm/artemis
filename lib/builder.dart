@@ -1,8 +1,10 @@
 // @dart = 2.8
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:artemis/generator/data/data.dart';
+import 'package:artemis/generator/helpers.dart';
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:gql/ast.dart';
@@ -30,18 +32,23 @@ List<String> _builderOptionsToExpectedOutputs(BuilderOptions builderOptions) {
 
   if (schemaMaps.any((s) => s.output == null)) {
     throw Exception('''One or more SchemaMap configurations miss an output!
-Please check your build.yaml file.
-''');
+                       Please check your build.yaml file.''');
   }
 
   return schemaMaps
       .map((s) {
         final outputWithoutLib = s.output.replaceAll(RegExp(r'^lib/'), '');
-
-        return {
+        final outputs = [
           outputWithoutLib,
-          _addGraphQLExtensionToPathIfNeeded(outputWithoutLib),
-        }.toList();
+          _addGraphQLExtensionToPathIfNeeded(outputWithoutLib)
+        ];
+        if (null != s.entities && s.entities.isNotEmpty) {
+          for (var entity in s.entities) {
+            outputs.add('${s.entityOutputFolder}/${entity}_entity.dart'
+                .replaceAll(RegExp(r'^lib/'), ''));
+          }
+        }
+        return outputs;
       })
       .expand((e) => e)
       .toList();
@@ -95,8 +102,8 @@ class GraphQLQueryBuilder implements Builder {
       // Loop through all files in glob
       if (schemaMap.queriesGlob == null) {
         throw Exception('''No queries were considered on this generation!
-Make sure that `queries_glob` your build.yaml file include GraphQL queries files.
-''');
+                          Make sure that `queries_glob` your build.yaml 
+                          file include GraphQL queries files.''');
       } else if (Glob(schemaMap.queriesGlob).matches(schemaMap.schema)) {
         throw QueryGlobsSchemaException();
       } else if (Glob(schemaMap.queriesGlob).matches(schemaMap.output)) {
@@ -127,11 +134,10 @@ Make sure that `queries_glob` your build.yaml file include GraphQL queries files
             )
             .first;
       } catch (e) {
-        throw Exception(
-            '''Schema `${schemaMap.schema}` was not found or doesn't have a proper format!
-Make sure the file exists and you've typed it correctly on build.yaml.
-${e}
-''');
+        throw Exception('''Schema `${schemaMap.schema}` was not found or 
+                          doesn't have a proper format! Make sure the file 
+                          exists and you've typed it correctly on build.yaml.
+                          ${e}''');
       }
 
       final libDefinition = generateLibrary(
@@ -145,7 +151,13 @@ ${e}
       if (onBuild != null) {
         onBuild(libDefinition);
       }
-      writeLibraryDefinitionToBuffer(buffer, libDefinition);
+      GqlMetadataInfo gqlMetadataInfo;
+      if (null != schemaMap.metadataFile && schemaMap.metadataFile.isNotEmpty) {
+        gqlMetadataInfo =
+            await _getGqlMetadataInfo(buildStep, schemaMap.metadataFile);
+      }
+      getFieldMappings(libDefinition.queries);
+      writeLibraryDefinitionToBuffer(buffer, libDefinition, gqlMetadataInfo);
 
       await buildStep.writeAsString(outputFileId, buffer.toString());
 
@@ -155,6 +167,50 @@ ${e}
         await buildStep.writeAsString(
             forwarderOutputFileId, writeLibraryForwarder(libDefinition));
       }
+
+      // Check if metadata file is provided for generating DB objects
+      if (null != gqlMetadataInfo &&
+          null != gqlMetadataInfo.entities &&
+          gqlMetadataInfo.entities.isNotEmpty) {
+        //generate db entity for this schema map
+        for (var entityKey in gqlMetadataInfo.entities.keys) {
+          var gqlEntityInfo = gqlMetadataInfo.entities[entityKey];
+          var entityOutputFile =
+              '${schemaMap.entityOutputFolder}/${entityKey}_entity.dart';
+          buffer.clear();
+          final entityOutputFileId = AssetId(
+            buildStep.inputId.package,
+            entityOutputFile,
+          );
+          writeEntityObjectToBuffer(
+            buffer,
+            buildStep.inputId.package,
+            schemaMap.output,
+            entityOutputFile,
+            gqlEntityInfo,
+          );
+          await buildStep.writeAsString(entityOutputFileId, buffer.toString());
+        }
+      }
+    }
+  }
+
+  Future<GqlMetadataInfo> _getGqlMetadataInfo(
+    BuildStep buildStep,
+    String metadataFile,
+  ) async {
+    final metadataAssetStream = buildStep.findAssets(Glob(metadataFile));
+    try {
+      final gqlMetadataInfo = await metadataAssetStream.asyncMap(
+        (asset) async {
+          final jsonString = await buildStep.readAsString(asset);
+          return GqlMetadataInfo.fromJson(
+              jsonDecode(jsonString) as Map<String, dynamic>);
+        },
+      ).first;
+      return gqlMetadataInfo;
+    } catch (e) {
+      throw Exception('''Could not parse metadata file $metadataFile ${e}''');
     }
   }
 }

@@ -131,6 +131,15 @@ class SchemaMap {
   /// A [Glob] to find queries files.
   final String queriesGlob;
 
+  /// A metadata file this schema mapping to be used.
+  final String metadataFile;
+
+  /// A entity folder containing the entities.
+  final String entityOutputFolder;
+
+  /// A list of entities generated for this schema.
+  final List<String> entities;
+
   /// The resolve type field used on this schema.
   @JsonKey(defaultValue: '__typename')
   final String typeNameField;
@@ -152,6 +161,9 @@ class SchemaMap {
     this.output,
     this.schema,
     this.queriesGlob,
+    this.metadataFile,
+    this.entityOutputFolder,
+    this.entities,
     this.typeNameField = '__typename',
     this.namingScheme = NamingScheme.pathedWithTypes,
   });
@@ -162,4 +174,156 @@ class SchemaMap {
 
   /// Convert this schema mapping instance to JSON.
   Map<String, dynamic> toJson() => _$SchemaMapToJson(this);
+}
+
+/// Gql Metadata info detail for mapping responses from server.
+@JsonSerializable(explicitToJson: true)
+class GqlMetadataInfo {
+  /// List Of queries for this entity type
+  final List<GqlQueryInfo> queries;
+
+  /// A map of entity key and entity info
+  final Map<String, GqlEntityInfo> entities;
+
+  /// Instantiates a GqlMetadataInfo.
+  GqlMetadataInfo({this.queries, this.entities});
+
+  /// Build a metadata info from a JSON map.
+  factory GqlMetadataInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlMetadataInfoFromJson(json);
+
+  /// Convert this meta data instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlMetadataInfoToJson(this);
+}
+
+/// Queries model for this entity type
+@JsonSerializable(explicitToJson: true)
+class GqlQueryInfo {
+  /// The operationName used for the query/mutation
+  final String operationName;
+
+  /// The entryPoint used for fetching or updating data
+  final String entryPoint;
+
+  /// The response type this query i.e QueryListResponse, QueryResponse and its Empty* equivalent
+  final String responseType;
+
+  /// The resultField which holds the output of this query if response type is QueryListResponse
+  final String resultField;
+
+  /// The deleteField which holds the ids which needs to be deleted if response type is QueryListResponse
+  final String deleteIdsField;
+
+  /// The lastFetchedTimestamp which holds the server timestamp for last fetch for this model.
+  final String lastFetchedField;
+
+  /// The entity key which points to the entity info mapping.
+  final String entity;
+
+  /// Get a clone of this object
+  GqlQueryInfo clone({String responseType}) => GqlQueryInfo(
+      operationName: operationName,
+      entryPoint: entryPoint,
+      responseType: responseType,
+      resultField: resultField,
+      deleteIdsField: deleteIdsField,
+      lastFetchedField: lastFetchedField,
+      entity: entity);
+
+  /// Instantiates a DbQueryInfo.
+  GqlQueryInfo({
+    this.operationName,
+    this.entryPoint,
+    this.responseType,
+    this.resultField,
+    this.deleteIdsField,
+    this.lastFetchedField,
+    this.entity,
+  });
+
+  /// Build a db field info from a JSON map.
+  factory GqlQueryInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlQueryInfoFromJson(json);
+
+  /// Convert this db field info instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlQueryInfoToJson(this);
+}
+
+/// Gql entity info
+@JsonSerializable(explicitToJson: true)
+class GqlEntityInfo {
+  /// Table name to use for the response object storage.
+  final String tableName;
+
+  /// Primary key field name for the table.
+  final GqlEntityFieldInfo pkField;
+
+  /// Index field columns for the table.
+  final List<GqlEntityFieldInfo> indexFields;
+
+  /// Info about the detail column for the table.
+  final GqlEntityFieldInfo detailField;
+
+  /// The top level response fields to be moved to the detail column.
+  final GqlEntityDetailFieldInfo detailFieldInfo;
+
+  /// Instantiates a GqlEntityInfo.
+  GqlEntityInfo({
+    this.tableName,
+    this.pkField,
+    this.indexFields,
+    this.detailField,
+    this.detailFieldInfo,
+  });
+
+  /// Build a metadata info from a JSON map.
+  factory GqlEntityInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlEntityInfoFromJson(json);
+
+  /// Convert this meta data instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlEntityInfoToJson(this);
+}
+
+/// Db field info for columns of table.
+@JsonSerializable(explicitToJson: true)
+class GqlEntityFieldInfo {
+  /// Field name used for entity column name derived as snake_case version of this.
+  final String fieldName;
+
+  /// Field type of the above field should be one of sqlite supported types.
+  final String fieldType;
+
+  /// Instantiates a GqlEntityDetailFieldInfo.
+  GqlEntityFieldInfo({this.fieldName, this.fieldType});
+
+  /// Build a db field info from a JSON map.
+  factory GqlEntityFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlEntityFieldInfoFromJson(json);
+
+  /// Convert this db field info instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlEntityFieldInfoToJson(this);
+}
+
+/// Detail field keys info.
+@JsonSerializable(explicitToJson: true)
+class GqlEntityDetailFieldInfo {
+  /// List of all fields which are of list types
+  final List<String> listFields;
+
+  /// Object field types
+  final List<String> objectFields;
+
+  /// Other field types
+  final List<String> otherFields;
+
+  /// Instantiates a GqlEntityDetailFieldInfo.
+  GqlEntityDetailFieldInfo(
+      {this.listFields, this.objectFields, this.otherFields});
+
+  /// Build a db field info from a JSON map.
+  factory GqlEntityDetailFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlEntityDetailFieldInfoFromJson(json);
+
+  /// Convert this db field info instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlEntityDetailFieldInfoToJson(this);
 }
