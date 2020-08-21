@@ -156,8 +156,13 @@ class GraphQLQueryBuilder implements Builder {
         gqlMetadataInfo =
             await _getGqlMetadataInfo(buildStep, schemaMap.metadataFile);
       }
-      getFieldMappings(libDefinition.queries);
-      writeLibraryDefinitionToBuffer(buffer, libDefinition, gqlMetadataInfo);
+      var fieldMappings = getFieldMappings(libDefinition.queries);
+      writeLibraryDefinitionToBuffer(
+        buffer,
+        libDefinition,
+        gqlMetadataInfo,
+        fieldMappings,
+      );
 
       await buildStep.writeAsString(outputFileId, buffer.toString());
 
@@ -188,6 +193,7 @@ class GraphQLQueryBuilder implements Builder {
             schemaMap.output,
             entityOutputFile,
             gqlEntityInfo,
+            fieldMappings,
           );
           await buildStep.writeAsString(entityOutputFileId, buffer.toString());
         }

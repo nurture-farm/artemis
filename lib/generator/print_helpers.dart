@@ -89,12 +89,26 @@ Method _propsMethod(String body) {
     ..body = Code(body));
 }
 
+Method _stringifyMethod() {
+  return Method((m) => m
+    ..type = MethodType.getter
+    ..returns = refer('bool')
+    ..annotations.add(CodeExpression(Code('override')))
+    ..name = 'stringify'
+    ..lambda = true
+    ..body = Code('true'));
+}
+
+@override
+bool get stringify => true;
+
 /// Generates a [Spec] of a single class definition.
 Spec classDefinitionToSpec(
   ClassDefinition definition,
   Iterable<FragmentClassDefinition> fragments,
   GqlMetadataInfo gqlMetadataInfo,
   Map<String, GqlQueryInfo> queryMappings,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   final fromJson = definition.factoryPossibilities.isNotEmpty
       ? Constructor(
@@ -163,14 +177,15 @@ Spec classDefinitionToSpec(
       //add query response mapping for list type or detail type
       classExtension = refer(
           (null == gqlEntityInfo) ? EMPTY_QUERY_RESPONSE : QUERY_RESPONSE);
-      _addQueryResponseMethods(customOverrides, gqlEntityInfo);
+      _addQueryResponseMethods(customOverrides, gqlEntityInfo, fieldMappings);
     } else if (queryInfo.responseType == QUERY_LIST_RESPONSE) {
       //add list mappings for current queryType
       classExtension = refer(QUERY_LIST_RESPONSE);
       classExtension = refer((null == gqlEntityInfo)
           ? EMPTY_QUERY_LIST_RESPONSE
           : QUERY_LIST_RESPONSE);
-      _addQueryListResponseMethods(customOverrides, gqlEntityInfo, queryInfo);
+      _addQueryListResponseMethods(
+          customOverrides, gqlEntityInfo, queryInfo, fieldMappings);
     } else if (queryInfo.responseType == QUERY_DETAIL_RESPONSE) {
       //add detail mapping for current queryType
       classExtension = refer(QUERY_DETAIL_RESPONSE);
@@ -188,6 +203,7 @@ Spec classDefinitionToSpec(
       ..mixins.add(refer('EquatableMixin'))
       ..mixins.addAll(definition.mixins.map((i) => refer(i.namePrintable)))
       ..methods.add(_propsMethod('[${props.join(',')}]'))
+      ..methods.add(_stringifyMethod())
       ..extend = classExtension
       ..implements.addAll(definition.implementations.map((i) => refer(i)))
       ..constructors.add(Constructor((b) {
@@ -233,6 +249,7 @@ void _addQueryListResponseMethods(
   List<Method> customOverrides,
   GqlEntityInfo gqlEntityInfo,
   GqlQueryInfo gqlQueryInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   if (null != gqlEntityInfo) {
     customOverrides.add(Method((m) => m
@@ -249,7 +266,7 @@ void _addQueryListResponseMethods(
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'pkFieldName'
       ..lambda = true
-      ..body = Code('\'${gqlEntityInfo.pkField.fieldName}\'')));
+      ..body = Code('\'${gqlEntityInfo.pkField.name}\'')));
 
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
@@ -263,7 +280,8 @@ void _addQueryListResponseMethods(
 
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
-      ..returns = refer('List<${gqlEntityInfo.pkField.fieldType}>')
+      ..returns = refer(
+          'List<${fieldMappings[gqlEntityInfo.pkField.name].mappedFieldDataType}>')
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'deleteIds'
       ..lambda = true
@@ -271,13 +289,16 @@ void _addQueryListResponseMethods(
           ? '[]'
           : '${gqlQueryInfo.entryPoint}.${gqlQueryInfo.deleteIdsField}')));
 
+    var rowsBody = (null == gqlQueryInfo.resultField)
+        ? '${gqlQueryInfo.entryPoint}'
+        : '${gqlQueryInfo.entryPoint}.${gqlQueryInfo.resultField}';
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
       ..returns = refer('List<QueryResponse>')
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'rows'
       ..lambda = true
-      ..body = Code('${gqlQueryInfo.entryPoint}.${gqlQueryInfo.resultField}')));
+      ..body = Code(rowsBody)));
   }
 }
 
@@ -307,35 +328,35 @@ void _addQueryDetailResponseMethods(
 void _addQueryResponseMethods(
   List<Method> customOverrides,
   GqlEntityInfo gqlEntityInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   if (null != gqlEntityInfo) {
     // add detail mapping if present
     final buffer = StringBuffer();
-    if (null != gqlEntityInfo.detailField) {
+    if (null != gqlEntityInfo.detailFields) {
       buffer.clear();
-      if (null == gqlEntityInfo.detailFieldInfo) {
-        buffer.writeln('{}');
-      } else {
-        buffer.writeln('{');
-        for (var field in gqlEntityInfo.detailFieldInfo.listFields) {
+      buffer.writeln('{');
+      for (var field in gqlEntityInfo.detailFields) {
+        var fieldInfo = fieldMappings[field];
+        if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
+          buffer.writeln('\'${field}\': ${field},');
+        } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
+          buffer.writeln('\'${field}\': ${field}.toValue(),');
+        } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_LIST)) {
           buffer.writeln(
               '\'${field}\': ${field}?.map((e) => e?.toJson())?.toList(),');
-        }
-        for (var field in gqlEntityInfo.detailFieldInfo.objectFields) {
+        } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_OBJECT)) {
           buffer.writeln('\'${field}\': ${field}?.toJson(),');
         }
-        for (var field in gqlEntityInfo.detailFieldInfo.otherFields) {
-          buffer.writeln('\'${field}\': ${field},');
-        }
-        buffer.writeln('}');
       }
+      buffer.writeln('}');
 
       customOverrides.add(
         Method(
           (m) => m
             ..type = MethodType.getter
             ..returns = refer('Map<String, dynamic>')
-            ..name = gqlEntityInfo.detailField.fieldName
+            ..name = gqlEntityInfo.detailFieldName
             ..lambda = true
             ..body = Code(buffer.toString()),
         ),
@@ -344,25 +365,27 @@ void _addQueryResponseMethods(
 
     buffer.clear();
     buffer.writeln('{');
-    buffer.writeln(
-        '\'${ReCase(gqlEntityInfo.pkField.fieldName).snakeCase}\': ${gqlEntityInfo.pkField.fieldName},');
+
+    // If primary key is not auto generated then add field
+    if (!gqlEntityInfo.pkField.auto) {
+      buffer.writeln(
+          '\'${ReCase(gqlEntityInfo.pkField.name).snakeCase}\': ${gqlEntityInfo.pkField.name},');
+    }
     for (var indexField in gqlEntityInfo.indexFields) {
-      if (sqliteTypes.contains(indexField.fieldType)) {
+      var fieldInfo = fieldMappings[indexField];
+      if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
+        buffer.writeln('\'${ReCase(indexField).snakeCase}\': ${indexField},');
+      } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
         buffer.writeln(
-            '\'${ReCase(indexField.fieldName).snakeCase}\': ${indexField.fieldName},');
-      } else if (equalsIgnoreCase(indexField.fieldType, enumType)) {
-        buffer.writeln(
-            '\'${ReCase(indexField.fieldName).snakeCase}\': ${indexField.fieldName}.toValue(),');
+            '\'${ReCase(indexField).snakeCase}\': ${indexField}.toValue(),');
       } else {
         throw Exception(
-            'Index field can be one of ${sqliteTypes} or enum type, but found of ${indexField.fieldType}');
+            'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
       }
     }
-    if (null != gqlEntityInfo.detailField) {
-      final detailColName =
-          ReCase(gqlEntityInfo.detailField.fieldName).snakeCase;
-      final detailColValue =
-          'jsonEncode(${gqlEntityInfo.detailField.fieldName})';
+    if (null != gqlEntityInfo.detailFieldName) {
+      final detailColName = ReCase(gqlEntityInfo.detailFieldName).snakeCase;
+      final detailColValue = 'jsonEncode(${gqlEntityInfo.detailFieldName})';
       buffer.writeln('\'$detailColName\': $detailColValue,');
     }
     buffer.writeln('}');
@@ -376,17 +399,17 @@ void _addQueryResponseMethods(
       ..lambda = true
       ..body = Code(buffer.toString())));
 
-    //add primary key
+    //add primary key value fetch for the current object if not auto generated
+    var primaryKeyValue =
+        gqlEntityInfo.pkField.auto ? null : gqlEntityInfo.pkField.name;
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
-      ..returns = refer(
-          equalsIgnoreCase(gqlEntityInfo.pkField.fieldType, enumType)
-              ? 'String'
-              : gqlEntityInfo.pkField.fieldType)
+      ..returns =
+          refer(fieldMappings[gqlEntityInfo.pkField.name].mappedFieldDataType)
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'primaryKeyValue'
       ..lambda = true
-      ..body = Code('${gqlEntityInfo.pkField.fieldName}')));
+      ..body = Code(primaryKeyValue)));
   }
 }
 
@@ -406,27 +429,22 @@ Spec fragmentClassDefinitionToSpec(FragmentClassDefinition definition) {
 
 /// Generates a [Spec] of a detail model class.
 Spec generateModelDetailClassSpec(
-  GqlEntityFieldInfo entityFieldInfo,
-  GqlEntityDetailFieldInfo entityDetailFieldInfo,
+  String detailFieldName,
+  List<String> detailFields,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   final detailFieldDefinitions = <Field>[];
-  if (null != entityDetailFieldInfo) {
-    for (var otherField in entityDetailFieldInfo.otherFields) {}
+  for (var fieldName in detailFields) {
+    detailFieldDefinitions.add(Field((f) => f
+      ..type = refer(fieldMappings[fieldName].fieldDataType)
+      ..name = fieldName));
   }
-  detailFieldDefinitions.add(Field((f) => f
-    ..type = refer('int')
-    ..name = 'farmId'));
-  detailFieldDefinitions.add(Field((f) => f
-    ..type = refer('int')
-    ..name = 'farmCropId'));
-  detailFieldDefinitions.add(Field((f) => f
-    ..type = refer('List<BookingModelMixin\$Services>')
-    ..name = 'services'));
+  final detailModelClassName = ReCase(detailFieldName).pascalCase;
   return Class(
     (b) => b
       ..annotations.add(CodeExpression(
           Code('JsonSerializable(explicitToJson: true, includeIfNull: false)')))
-      ..name = 'BookingDetail'
+      ..name = detailModelClassName
       ..constructors.add(Constructor(
         (b) => b,
       ))
@@ -440,14 +458,14 @@ Spec generateModelDetailClassSpec(
               ..type = refer('Map<String, dynamic>')
               ..name = 'json',
           ))
-          ..body = Code('_\$BookingDetailFromJson(json)'),
+          ..body = Code('_\$${detailModelClassName}FromJson(json)'),
       ))
       ..methods.add(Method(
         (m) => m
           ..name = 'toJson'
           ..lambda = true
           ..returns = refer('Map<String, dynamic>')
-          ..body = Code('_\$BookingDetailToJson(this)'),
+          ..body = Code('_\$${detailModelClassName}ToJson(this)'),
       ))
       ..fields.addAll(detailFieldDefinitions),
   );
@@ -566,6 +584,7 @@ Spec generateQueryClassSpec(QueryDefinition definition) {
       ..fields.addAll(fields)
       ..methods.add(_propsMethod(
           '[document, operationName${definition.inputs.isNotEmpty ? ', variables' : ''}]'))
+      ..methods.add(_stringifyMethod())
       ..methods.add(Method(
         (m) => m
           ..annotations.add(CodeExpression(Code('override')))
@@ -585,7 +604,10 @@ Spec generateQueryClassSpec(QueryDefinition definition) {
 /// Gathers and generates a [Spec] of a whole query/mutation and its
 /// dependencies into a single library file.
 Spec generateLibrarySpec(
-    LibraryDefinition definition, GqlMetadataInfo gqlMetadataInfo) {
+  LibraryDefinition definition,
+  GqlMetadataInfo gqlMetadataInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
+) {
   final importDirectives = [
     Directive.import('package:json_annotation/json_annotation.dart'),
     Directive.import('package:equatable/equatable.dart'),
@@ -692,6 +714,7 @@ Spec generateLibrarySpec(
         fragments,
         gqlMetadataInfo,
         queryMappings,
+        fieldMappings,
       )));
   bodyDirectives.addAll(enums.map(enumDefinitionToSpec));
   bodyDirectives.addAll(enums.map(enumDefinitionExtensionToSpec));
@@ -705,13 +728,17 @@ Spec generateLibrarySpec(
     }
   }
 
+  //generate model detail class if we have detail fields
   if (null != gqlMetadataInfo.entities && gqlMetadataInfo.entities.isNotEmpty) {
     for (var entityName in gqlMetadataInfo.entities.keys) {
       var gqlEntity = gqlMetadataInfo.entities[entityName];
-      if (null != gqlEntity && null != gqlEntity.detailField) {
+      if (null != gqlEntity && null != gqlEntity.detailFields) {
         //add a detail class model for the current entity
         bodyDirectives.add(generateModelDetailClassSpec(
-            gqlEntity.detailField, gqlEntity.detailFieldInfo));
+          gqlEntity.detailFieldName,
+          gqlEntity.detailFields,
+          fieldMappings,
+        ));
       }
     }
   }
@@ -727,6 +754,7 @@ Spec generateEntitySpec(
   String schemaOutputFile,
   String entityOutputFile,
   GqlEntityInfo gqlEntityInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   final outputFile = schemaOutputFile.replaceAll(RegExp(r'^lib/'), '');
   final importDirectives = [
@@ -750,95 +778,101 @@ Spec generateEntitySpec(
     throw Exception(
         'Primary key is required for entity ${gqlEntityInfo.tableName}');
   }
-  if (!sqliteTypes.contains(gqlEntityInfo.pkField.fieldType)) {
+  var pkFieldInfo = fieldMappings[gqlEntityInfo.pkField.name];
+  if (!(equalsIgnoreCase(pkFieldInfo.fieldType, FT_PRIMITIVE) ||
+      equalsIgnoreCase(pkFieldInfo.fieldType, FT_ENUM))) {
     throw Exception(
-        'Field type ${gqlEntityInfo.pkField.fieldType} not supported for Primary key');
+        'Field type ${pkFieldInfo.fieldDataType} not supported for Primary key');
   }
+  var pkAnnotation = gqlEntityInfo.pkField.auto
+      ? 'PrimaryKey(autoGenerate: true)'
+      : 'primaryKey';
+  var fieldType =
+      gqlEntityInfo.pkField.auto ? 'int' : pkFieldInfo.mappedFieldDataType;
   entityFields.add(
     Field(
       (f) => f
-        ..name = gqlEntityInfo.pkField.fieldName
-        ..type = refer(gqlEntityInfo.pkField.fieldType)
-        ..annotations.add(CodeExpression(Code('primaryKey')))
+        ..name = gqlEntityInfo.pkField.name
+        ..type = refer(fieldType)
+        ..annotations.add(CodeExpression(Code(pkAnnotation)))
         ..annotations.add(CodeExpression(Code(
-            'ColumnInfo(name: \'${ReCase(gqlEntityInfo.pkField.fieldName).snakeCase}\')'))),
+            'ColumnInfo(name: \'${ReCase(gqlEntityInfo.pkField.name).snakeCase}\')'))),
     ),
   );
   parameterFields.add(
     Parameter((p) => p
-      ..name = gqlEntityInfo.pkField.fieldName
+      ..name = gqlEntityInfo.pkField.name
       ..toThis = true
       ..named = true),
   );
 
   //add other index fields
   for (final indexField in gqlEntityInfo.indexFields) {
-    if (!(equalsIgnoreCase(indexField.fieldType, enumType) ||
-        sqliteTypes.contains(indexField.fieldType))) {
+    var indexFieldInfo = fieldMappings[indexField];
+    if (!(equalsIgnoreCase(indexFieldInfo.fieldType, FT_PRIMITIVE) ||
+        equalsIgnoreCase(indexFieldInfo.fieldType, FT_ENUM))) {
       throw Exception(
-          'Unknown field type ${indexField.fieldType} for index field ${indexField.fieldName} - ${!equalsIgnoreCase(indexField.fieldType, enumType)}');
+          'Unknown field type ${indexFieldInfo.fieldDataType} for index field ${indexField}');
     }
     entityFields.add(
       Field(
         (f) => f
-          ..name = indexField.fieldName
-          ..type = refer(equalsIgnoreCase(indexField.fieldType, enumType)
-              ? 'String'
-              : indexField.fieldType)
-          ..annotations.add(CodeExpression(Code(
-              'ColumnInfo(name: \'${ReCase(indexField.fieldName).snakeCase}\')'))),
+          ..name = indexField
+          ..type = refer(indexFieldInfo.mappedFieldDataType)
+          ..annotations.add(CodeExpression(
+              Code('ColumnInfo(name: \'${ReCase(indexField).snakeCase}\')'))),
       ),
     );
     parameterFields.add(
       Parameter((p) => p
-        ..name = indexField.fieldName
+        ..name = indexField
         ..toThis = true
         ..named = true),
     );
   }
 
   var entityMethods = <Method>[];
-  final detailField = gqlEntityInfo.detailField;
-  if (null != detailField) {
+  if (null != gqlEntityInfo.detailFieldName) {
     //add detail field String column which will contain the json string
     entityFields.add(
       Field((f) => f
-        ..name = detailField.fieldName
+        ..name = gqlEntityInfo.detailFieldName
         ..type = refer('String')
         ..annotations.add(CodeExpression(Code(
-            'ColumnInfo(name: \'${ReCase(detailField.fieldName).snakeCase}\')')))),
+            'ColumnInfo(name: \'${ReCase(gqlEntityInfo.detailFieldName).snakeCase}\')')))),
     );
     parameterFields.add(
       Parameter((p) => p
-        ..name = detailField.fieldName
+        ..name = gqlEntityInfo.detailFieldName
         ..toThis = true
         ..named = true),
     );
 
-    final ignoreFieldName = '_${detailField.fieldName}Model';
+    final ignoreFieldName = '_${gqlEntityInfo.detailFieldName}Model';
+    final modelFieldType = ReCase(gqlEntityInfo.detailFieldName).pascalCase;
     //add ignore field
     entityFields.add(
       Field((f) => f
         ..name = ignoreFieldName
-        ..type = refer(detailField.fieldType)
+        ..type = refer(modelFieldType)
         ..annotations.add(CodeExpression(Code('ignore')))),
     );
 
     //add detail model parsing logic
     bodyCode.clear();
     bodyCode.writeln(
-        'if (null != $ignoreFieldName || null == ${detailField.fieldName}) {');
+        'if (null != $ignoreFieldName || null == ${gqlEntityInfo.detailFieldName}) {');
     bodyCode.writeln('  return $ignoreFieldName;');
     bodyCode.writeln('}');
     bodyCode.writeln(
-        '$ignoreFieldName = ${detailField.fieldType}.fromJson(jsonDecode(${detailField.fieldName}));');
+        '$ignoreFieldName = ${modelFieldType}.fromJson(jsonDecode(${gqlEntityInfo.detailFieldName}));');
     bodyCode.writeln('return $ignoreFieldName;');
 
     entityMethods.add(
       Method((m) => m
         ..type = MethodType.getter
-        ..returns = refer(detailField.fieldType)
-        ..name = '${detailField.fieldName}Model'
+        ..returns = refer(modelFieldType)
+        ..name = '${gqlEntityInfo.detailFieldName}Model'
         ..lambda = false
         ..body = Code(bodyCode.toString())),
     );
@@ -873,10 +907,18 @@ String specToString(Spec spec) {
 
 /// Generate Dart code typing's from a query or mutation and its response from
 /// a [QueryDefinition] into a buffer.
-void writeLibraryDefinitionToBuffer(StringBuffer buffer,
-    LibraryDefinition definition, GqlMetadataInfo gqlMetadataInfo) {
+void writeLibraryDefinitionToBuffer(
+  StringBuffer buffer,
+  LibraryDefinition definition,
+  GqlMetadataInfo gqlMetadataInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
+) {
   buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND\n');
-  buffer.write(specToString(generateLibrarySpec(definition, gqlMetadataInfo)));
+  buffer.write(specToString(generateLibrarySpec(
+    definition,
+    gqlMetadataInfo,
+    fieldMappings,
+  )));
 }
 
 /// Generate an empty file just exporting the library. This is used to avoid
@@ -893,6 +935,7 @@ void writeEntityObjectToBuffer(
   String schemaOutputFile,
   String entityOutputFile,
   GqlEntityInfo gqlEntityInfo,
+  Map<String, GqlEntityFieldInfo> fieldMappings,
 ) {
   buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND\n');
   buffer.write(
@@ -902,6 +945,7 @@ void writeEntityObjectToBuffer(
         schemaOutputFile,
         entityOutputFile,
         gqlEntityInfo,
+        fieldMappings,
       ),
     ),
   );

@@ -256,24 +256,24 @@ class GqlEntityInfo {
   final String tableName;
 
   /// Primary key field name for the table.
-  final GqlEntityFieldInfo pkField;
+  final GqlEntityPKFieldInfo pkField;
 
   /// Index field columns for the table.
-  final List<GqlEntityFieldInfo> indexFields;
+  final List<String> indexFields;
 
-  /// Info about the detail column for the table.
-  final GqlEntityFieldInfo detailField;
+  /// The name of the detail field
+  final String detailFieldName;
 
   /// The top level response fields to be moved to the detail column.
-  final GqlEntityDetailFieldInfo detailFieldInfo;
+  final List<String> detailFields;
 
   /// Instantiates a GqlEntityInfo.
   GqlEntityInfo({
     this.tableName,
     this.pkField,
     this.indexFields,
-    this.detailField,
-    this.detailFieldInfo,
+    this.detailFieldName,
+    this.detailFields,
   });
 
   /// Build a metadata info from a JSON map.
@@ -284,46 +284,46 @@ class GqlEntityInfo {
   Map<String, dynamic> toJson() => _$GqlEntityInfoToJson(this);
 }
 
-/// Db field info for columns of table.
+/// Primary key Field info
+@JsonSerializable(explicitToJson: true)
+class GqlEntityPKFieldInfo {
+  /// The name of the primary key field
+  final String name;
+
+  /// Weather this is auto incremented key
+  final bool auto;
+
+  /// Instantiates a GqlEntityPKFieldInfo.
+  GqlEntityPKFieldInfo({this.name, this.auto});
+
+  /// Build a field info from a JSON map.
+  factory GqlEntityPKFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlEntityPKFieldInfoFromJson(json);
+
+  /// Convert this field info instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlEntityPKFieldInfoToJson(this);
+}
+
+/// Field info for columns of table.
 @JsonSerializable(explicitToJson: true)
 class GqlEntityFieldInfo {
-  /// Field name used for entity column name derived as snake_case version of this.
-  final String fieldName;
-
-  /// Field type of the above field should be one of sqlite supported types.
+  /// The type of field for this field can be one of PRIMITIVE,ENUM,LIST,OBJECT
   final String fieldType;
 
-  /// Instantiates a GqlEntityDetailFieldInfo.
-  GqlEntityFieldInfo({this.fieldName, this.fieldType});
+  /// The original data type of the field.
+  final String fieldDataType;
 
-  /// Build a db field info from a JSON map.
+  /// The mapped data type of the field.
+  final String mappedFieldDataType;
+
+  /// Instantiates a GqlEntityDetailFieldInfo.
+  GqlEntityFieldInfo(
+      {this.fieldType, this.fieldDataType, this.mappedFieldDataType});
+
+  /// Build a field info from a JSON map.
   factory GqlEntityFieldInfo.fromJson(Map<String, dynamic> json) =>
       _$GqlEntityFieldInfoFromJson(json);
 
-  /// Convert this db field info instance to JSON.
+  /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityFieldInfoToJson(this);
-}
-
-/// Detail field keys info.
-@JsonSerializable(explicitToJson: true)
-class GqlEntityDetailFieldInfo {
-  /// List of all fields which are of list types
-  final List<String> listFields;
-
-  /// Object field types
-  final List<String> objectFields;
-
-  /// Other field types
-  final List<String> otherFields;
-
-  /// Instantiates a GqlEntityDetailFieldInfo.
-  GqlEntityDetailFieldInfo(
-      {this.listFields, this.objectFields, this.otherFields});
-
-  /// Build a db field info from a JSON map.
-  factory GqlEntityDetailFieldInfo.fromJson(Map<String, dynamic> json) =>
-      _$GqlEntityDetailFieldInfoFromJson(json);
-
-  /// Convert this db field info instance to JSON.
-  Map<String, dynamic> toJson() => _$GqlEntityDetailFieldInfoToJson(this);
 }
