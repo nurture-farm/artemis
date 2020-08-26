@@ -384,15 +384,17 @@ void _addQueryResponseMethods(
       else if(indexField is Map<String,dynamic>){
         indexFieldName = Map.from(indexField)["name"] as String;
       }
-      var fieldInfo = fieldMappings[indexField];
-      if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
-        buffer.writeln('\'${ReCase(indexFieldName).snakeCase}\': ${indexField},');
-      } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
-        buffer.writeln(
-            '\'${ReCase(indexFieldName).snakeCase}\': ${indexField}.toValue(),');
-      } else {
-        throw Exception(
-            'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
+      if(_isFieldPresentInSchema(fieldMappings, indexFieldName)){
+        var fieldInfo = fieldMappings[indexField];
+        if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
+          buffer.writeln('\'${ReCase(indexFieldName).snakeCase}\': ${indexField},');
+        } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
+          buffer.writeln(
+              '\'${ReCase(indexFieldName).snakeCase}\': ${indexField}.toValue(),');
+        } else {
+          throw Exception(
+              'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
+        }
       }
     }
     if (null != gqlEntityInfo.detailFieldName) {
