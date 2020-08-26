@@ -370,7 +370,7 @@ void _addQueryResponseMethods(
 
     // If primary key is not auto generated then add field
     gqlEntityInfo.pkFields.forEach((pkField) {
-      if (!pkField.auto) {
+      if (!pkField.auto && _isFieldPresentInSchema(fieldMappings, pkField.name)) {
         buffer.writeln(
             '\'${ReCase(pkField.name).snakeCase}\': ${pkField.name},');
       }
@@ -427,6 +427,8 @@ void _addQueryResponseMethods(
 
   }
 }
+
+bool _isFieldPresentInSchema(Map<String, GqlEntityFieldInfo> fieldMappings, String field) => fieldMappings[field] != null;
 
 /// Generates a [Spec] of a single fragment class definition.
 Spec fragmentClassDefinitionToSpec(FragmentClassDefinition definition) {
