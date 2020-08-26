@@ -411,19 +411,19 @@ void _addQueryResponseMethods(
       ..lambda = true
       ..body = Code(buffer.toString())));
 
-    //add primary key value fetch for the current object if not auto generated
-    gqlEntityInfo.pkFields.forEach((pkField) {
-      var primaryKeyValue =
-      pkField.auto ? null : pkField.name;
-      customOverrides.add(Method((m) => m
-        ..type = MethodType.getter
-        ..returns =
-        refer(fieldMappings[pkField.name]?.mappedFieldDataType ?? pkField.type)
-        ..annotations.add(CodeExpression(Code('override')))
-        ..name = 'primaryKeyValue'
-        ..lambda = true
-        ..body = Code(primaryKeyValue)));
-    });
+//    //add primary key value fetch for the current object if not auto generated
+//    gqlEntityInfo.pkFields.forEach((pkField) {
+//      var primaryKeyValue =
+//      pkField.auto ? null : pkField.name;
+//      customOverrides.add(Method((m) => m
+//        ..type = MethodType.getter
+//        ..returns =
+//        refer(fieldMappings[pkField.name]?.mappedFieldDataType ?? pkField.type)
+//        ..annotations.add(CodeExpression(Code('override')))
+//        ..name = 'primaryKeyValue'
+//        ..lambda = true
+//        ..body = Code(primaryKeyValue)));
+//    });
 
   }
 }
