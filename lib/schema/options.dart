@@ -256,10 +256,13 @@ class GqlEntityInfo {
   final String tableName;
 
   /// Primary key field name for the table.
-  final GqlEntityPKFieldInfo pkField;
+  final List<GqlEntityPKFieldInfo> pkFields;
+
+  /// Delete key field name for the table.
+  final GqlEntityDeleteIdFieldInfo deleteIdField;
 
   /// Index field columns for the table.
-  final List<String> indexFields;
+  final List<dynamic> indexFields;
 
   /// The name of the detail field
   final String detailFieldName;
@@ -270,7 +273,8 @@ class GqlEntityInfo {
   /// Instantiates a GqlEntityInfo.
   GqlEntityInfo({
     this.tableName,
-    this.pkField,
+    this.pkFields,
+    this.deleteIdField,
     this.indexFields,
     this.detailFieldName,
     this.detailFields,
@@ -293,8 +297,15 @@ class GqlEntityPKFieldInfo {
   /// Weather this is auto incremented key
   final bool auto;
 
+  ///The type of the field
+  final String type;
+
   /// Instantiates a GqlEntityPKFieldInfo.
-  GqlEntityPKFieldInfo({this.name, this.auto});
+  GqlEntityPKFieldInfo({
+    this.name,
+    this.auto,
+    this.type,
+  });
 
   /// Build a field info from a JSON map.
   factory GqlEntityPKFieldInfo.fromJson(Map<String, dynamic> json) =>
@@ -302,6 +313,28 @@ class GqlEntityPKFieldInfo {
 
   /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityPKFieldInfoToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class GqlEntityDeleteIdFieldInfo {
+  /// The name of the primary key field
+  final String name;
+
+  ///The type of the field
+  final String type;
+
+  /// Instantiates a GqlEntityPKFieldInfo.
+  GqlEntityDeleteIdFieldInfo({
+    this.name,
+    this.type,
+  });
+
+  /// Build a field info from a JSON map.
+  factory GqlEntityDeleteIdFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$GqlEntityDeleteIdFieldInfoFromJson(json);
+
+  /// Convert this field info instance to JSON.
+  Map<String, dynamic> toJson() => _$GqlEntityDeleteIdFieldInfoToJson(this);
 }
 
 /// Field info for columns of table.
