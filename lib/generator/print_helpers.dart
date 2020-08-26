@@ -385,12 +385,12 @@ void _addQueryResponseMethods(
         indexFieldName = Map.from(indexField)["name"] as String;
       }
       if(_isFieldPresentInSchema(fieldMappings, indexFieldName)){
-        var fieldInfo = fieldMappings[indexField];
+        var fieldInfo = fieldMappings[indexFieldName];
         if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
-          buffer.writeln('\'${ReCase(indexFieldName).snakeCase}\': ${indexField},');
+          buffer.writeln('\'${ReCase(indexFieldName).snakeCase}\': ${indexFieldName},');
         } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
           buffer.writeln(
-              '\'${ReCase(indexFieldName).snakeCase}\': ${indexField}.toValue(),');
+              '\'${ReCase(indexFieldName).snakeCase}\': ${indexFieldName}.toValue(),');
         } else {
           throw Exception(
               'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
@@ -852,7 +852,7 @@ Spec generateEntitySpec(
       if (!(equalsIgnoreCase(indexFieldInfo.fieldType, FT_PRIMITIVE) ||
           equalsIgnoreCase(indexFieldInfo.fieldType, FT_ENUM))) {
         throw Exception(
-            'Unknown field type ${indexFieldInfo.fieldDataType} for index field ${indexField}');
+            'Unknown field type ${indexFieldInfo.fieldDataType} for index field ${indexFieldName}');
       }
       mappedFieldDataType = indexFieldInfo.mappedFieldDataType;
     }
