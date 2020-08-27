@@ -397,6 +397,7 @@ void _addQueryResponseMethods(
         }
       }
     }
+
     if (null != gqlEntityInfo.detailFieldName) {
       final detailColName = ReCase(gqlEntityInfo.detailFieldName).snakeCase;
       final detailColValue = 'jsonEncode(${gqlEntityInfo.detailFieldName})';
@@ -857,21 +858,25 @@ Spec generateEntitySpec(
       mappedFieldDataType = indexFieldInfo.mappedFieldDataType;
     }
 
-    entityFields.add(
-      Field(
-        (f) => f
+    assert(mappedFieldDataType != null,"No Type defined for ${indexFieldName}");
+
+    if(mappedFieldDataType != null){
+      entityFields.add(
+        Field(
+              (f) => f
+            ..name = indexFieldName
+            ..type = refer(mappedFieldDataType)
+            ..annotations.add(CodeExpression(
+                Code('ColumnInfo(name: \'${ReCase(indexFieldName).snakeCase}\')'))),
+        ),
+      );
+      parameterFields.add(
+        Parameter((p) => p
           ..name = indexFieldName
-          ..type = refer(mappedFieldDataType)
-          ..annotations.add(CodeExpression(
-              Code('ColumnInfo(name: \'${ReCase(indexFieldName).snakeCase}\')'))),
-      ),
-    );
-    parameterFields.add(
-      Parameter((p) => p
-        ..name = indexFieldName
-        ..toThis = true
-        ..named = true),
-    );
+          ..toThis = true
+          ..named = true),
+      );
+    }
   }
 
   var entityMethods = <Method>[];
