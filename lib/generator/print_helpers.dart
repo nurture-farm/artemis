@@ -99,9 +99,6 @@ Method _stringifyMethod() {
     ..body = Code('true'));
 }
 
-@override
-bool get stringify => true;
-
 /// Generates a [Spec] of a single class definition.
 Spec classDefinitionToSpec(
   ClassDefinition definition,
