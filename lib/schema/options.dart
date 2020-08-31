@@ -259,10 +259,10 @@ class GqlEntityInfo {
   final List<GqlEntityPKFieldInfo> pkFields;
 
   /// Delete key field name for the table.
-  final GqlEntityDeleteIdFieldInfo deleteIdField;
+  final EntityFieldInfo deleteIdField;
 
   /// Index field columns for the table.
-  final List<dynamic> indexFields;
+  final List<EntityFieldInfo> indexFields;
 
   /// The name of the detail field
   final String detailFieldName;
@@ -292,19 +292,19 @@ class GqlEntityInfo {
 @JsonSerializable(explicitToJson: true)
 class GqlEntityPKFieldInfo {
   /// The name of the primary key field
-  final String name;
+  final String fieldName;
 
   /// Weather this is auto incremented key
   final bool auto;
 
   ///The type of the field
-  final String type;
+  final String mappedFieldDataType;
 
   /// Instantiates a GqlEntityPKFieldInfo.
   GqlEntityPKFieldInfo({
-    this.name,
+    this.fieldName,
     this.auto,
-    this.type,
+    this.mappedFieldDataType,
   });
 
   /// Build a field info from a JSON map.
@@ -313,28 +313,6 @@ class GqlEntityPKFieldInfo {
 
   /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityPKFieldInfoToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true)
-class GqlEntityDeleteIdFieldInfo {
-  /// The name of the primary key field
-  final String name;
-
-  ///The type of the field
-  final String type;
-
-  /// Instantiates a GqlEntityPKFieldInfo.
-  GqlEntityDeleteIdFieldInfo({
-    this.name,
-    this.type,
-  });
-
-  /// Build a field info from a JSON map.
-  factory GqlEntityDeleteIdFieldInfo.fromJson(Map<String, dynamic> json) =>
-      _$GqlEntityDeleteIdFieldInfoFromJson(json);
-
-  /// Convert this field info instance to JSON.
-  Map<String, dynamic> toJson() => _$GqlEntityDeleteIdFieldInfoToJson(this);
 }
 
 /// Field info for columns of table.
@@ -359,4 +337,26 @@ class GqlEntityFieldInfo {
 
   /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityFieldInfoToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class EntityFieldInfo {
+  /// The original data type of the field.
+  final String fieldName;
+
+  /// The mapped data type of the field.
+  final String mappedFieldDataType;
+
+  /// Instantiates a GqlEntityDetailFieldInfo.
+  EntityFieldInfo({
+    this.fieldName,
+    this.mappedFieldDataType,
+  });
+
+  /// Build a field info from a JSON map.
+  factory EntityFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$EntityFieldInfoFromJson(json);
+
+  /// Convert this field info instance to JSON.
+  Map<String, dynamic> toJson() => _$EntityFieldInfoToJson(this);
 }

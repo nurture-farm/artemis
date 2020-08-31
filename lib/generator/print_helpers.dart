@@ -266,7 +266,7 @@ void _addQueryListResponseMethods(
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'deleteIdFieldName'
       ..lambda = true
-      ..body = Code('\'${gqlEntityInfo.deleteIdField.name}\'')));
+      ..body = Code('\'${gqlEntityInfo.deleteIdField.fieldName}\'')));
 
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
@@ -282,7 +282,7 @@ void _addQueryListResponseMethods(
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
       ..returns = refer(
-          'List<${fieldMappings[gqlEntityInfo.deleteIdField.name]?.mappedFieldDataType ?? gqlEntityInfo.deleteIdField.type}>')
+          'List<${fieldMappings[gqlEntityInfo.deleteIdField.fieldName]?.mappedFieldDataType ?? gqlEntityInfo.deleteIdField.fieldName}>')
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'deleteIds'
       ..lambda = true
@@ -370,20 +370,14 @@ void _addQueryResponseMethods(
 
     // If primary key is not auto generated then add field
     gqlEntityInfo.pkFields.forEach((pkField) {
-      if (!pkField.auto && _isFieldPresentInSchema(fieldMappings, pkField.name)) {
+      if (!pkField.auto && _isFieldPresentInSchema(fieldMappings, pkField.fieldName)) {
         buffer.writeln(
-            '\'${ReCase(pkField.name).snakeCase}\': ${pkField.name},');
+            '\'${ReCase(pkField.fieldName).snakeCase}\': ${pkField.fieldName},');
       }
     });
 
     for (var indexField in gqlEntityInfo.indexFields) {
-      String indexFieldName;
-      if(indexField is String){
-        indexFieldName = indexField;
-      }
-      else if(indexField is Map<String,dynamic>){
-        indexFieldName = Map.from(indexField)["name"] as String;
-      }
+      var indexFieldName = indexField.fieldName;
       if(_isFieldPresentInSchema(fieldMappings, indexFieldName)){
         var fieldInfo = fieldMappings[indexFieldName];
         if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
@@ -800,7 +794,7 @@ Spec generateEntitySpec(
   }
 
   gqlEntityInfo.pkFields.forEach((pkField) {
-    var pkFieldInfo = fieldMappings[pkField.name];
+    var pkFieldInfo = fieldMappings[pkField.fieldName];
     if(pkFieldInfo != null){
       if (!(equalsIgnoreCase(pkFieldInfo.fieldType, FT_PRIMITIVE) ||
           equalsIgnoreCase(pkFieldInfo.fieldType, FT_ENUM))) {
@@ -812,20 +806,20 @@ Spec generateEntitySpec(
         ? 'PrimaryKey(autoGenerate: true)'
         : 'primaryKey';
     var fieldType =
-    pkField.auto ? 'int' : pkFieldInfo?.mappedFieldDataType ?? pkField.type;
+    pkField.auto ? 'int' : pkFieldInfo?.mappedFieldDataType ?? pkField.mappedFieldDataType;
     entityFields.add(
       Field(
             (f) => f
-          ..name = pkField.name
+          ..name = pkField.fieldName
           ..type = refer(fieldType)
           ..annotations.add(CodeExpression(Code(pkAnnotation)))
           ..annotations.add(CodeExpression(Code(
-              'ColumnInfo(name: \'${ReCase(pkField.name).snakeCase}\')'))),
+              'ColumnInfo(name: \'${ReCase(pkField.fieldName).snakeCase}\')'))),
       ),
     );
     parameterFields.add(
       Parameter((p) => p
-        ..name = pkField.name
+        ..name = pkField.fieldName
         ..toThis = true
         ..named = true),
     );
@@ -835,17 +829,8 @@ Spec generateEntitySpec(
   //add other index fields
   for (final indexField in gqlEntityInfo.indexFields) {
 
-    String indexFieldName;
-    String mappedFieldDataType;
-
-    if(indexField is String){
-      indexFieldName = indexField;
-    }
-    else if(indexField is Map<String,dynamic>){
-      var _indexField = Map.from(indexField);
-      indexFieldName = _indexField['name'] as String;
-      mappedFieldDataType = _indexField['type'] as String;
-    }
+    var indexFieldName = indexField.fieldName;
+    var mappedFieldDataType = indexField.mappedFieldDataType;
 
     var indexFieldInfo = fieldMappings[indexFieldName];
 

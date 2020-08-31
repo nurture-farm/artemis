@@ -181,9 +181,13 @@ GqlEntityInfo _$GqlEntityInfoFromJson(Map<String, dynamic> json) {
         ?.toList(),
     deleteIdField: json['deleteIdField'] == null
         ? null
-        : GqlEntityDeleteIdFieldInfo.fromJson(
+        : EntityFieldInfo.fromJson(
             json['deleteIdField'] as Map<String, dynamic>),
-    indexFields: json['indexFields'] as List,
+    indexFields: (json['indexFields'] as List)
+        ?.map((e) => e == null
+        ? null
+        : EntityFieldInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
     detailFieldName: json['detailFieldName'] as String,
     detailFields:
         (json['detailFields'] as List)?.map((e) => e as String)?.toList(),
@@ -202,34 +206,20 @@ Map<String, dynamic> _$GqlEntityInfoToJson(GqlEntityInfo instance) =>
 
 GqlEntityPKFieldInfo _$GqlEntityPKFieldInfoFromJson(Map<String, dynamic> json) {
   return GqlEntityPKFieldInfo(
-    name: json['name'] as String,
+    fieldName: json['fieldName'] as String,
     auto: json['auto'] as bool,
-    type: json['type'] as String,
+    mappedFieldDataType: json['mappedFieldDataType'] as String,
   );
 }
 
 Map<String, dynamic> _$GqlEntityPKFieldInfoToJson(
         GqlEntityPKFieldInfo instance) =>
     <String, dynamic>{
-      'name': instance.name,
+      'fieldName': instance.fieldName,
       'auto': instance.auto,
-      'type': instance.type,
+      'mappedFieldDataType': instance.mappedFieldDataType,
     };
 
-GqlEntityDeleteIdFieldInfo _$GqlEntityDeleteIdFieldInfoFromJson(
-    Map<String, dynamic> json) {
-  return GqlEntityDeleteIdFieldInfo(
-    name: json['name'] as String,
-    type: json['type'] as String,
-  );
-}
-
-Map<String, dynamic> _$GqlEntityDeleteIdFieldInfoToJson(
-        GqlEntityDeleteIdFieldInfo instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-      'type': instance.type,
-    };
 
 GqlEntityFieldInfo _$GqlEntityFieldInfoFromJson(Map<String, dynamic> json) {
   return GqlEntityFieldInfo(
@@ -243,5 +233,18 @@ Map<String, dynamic> _$GqlEntityFieldInfoToJson(GqlEntityFieldInfo instance) =>
     <String, dynamic>{
       'fieldType': instance.fieldType,
       'fieldDataType': instance.fieldDataType,
+      'mappedFieldDataType': instance.mappedFieldDataType,
+    };
+
+EntityFieldInfo _$EntityFieldInfoFromJson(Map<String, dynamic> json) {
+  return EntityFieldInfo(
+    fieldName: json['fieldName'] as String,
+    mappedFieldDataType: json['mappedFieldDataType'] as String,
+  );
+}
+
+Map<String, dynamic> _$EntityFieldInfoToJson(EntityFieldInfo instance) =>
+    <String, dynamic>{
+      'fieldName': instance.fieldName,
       'mappedFieldDataType': instance.mappedFieldDataType,
     };
