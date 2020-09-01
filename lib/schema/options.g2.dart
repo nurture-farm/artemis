@@ -1,6 +1,5 @@
-// @dart = 2.8
-
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// @dart=2.8
 
 part of 'options.dart';
 
@@ -86,7 +85,7 @@ Map<String, dynamic> _$SchemaMapToJson(SchemaMap instance) => <String, dynamic>{
       'schema': instance.schema,
       'queries_glob': instance.queriesGlob,
       'metadata_file': instance.metadataFile,
-      'entityOutputFolder': instance.entityOutputFolder,
+      'entity_output_folder': instance.entityOutputFolder,
       'entities': instance.entities,
       'type_name_field': instance.typeNameField,
       'naming_scheme': _$NamingSchemeEnumMap[instance.namingScheme],
@@ -175,12 +174,20 @@ Map<String, dynamic> _$GqlQueryInfoToJson(GqlQueryInfo instance) =>
 GqlEntityInfo _$GqlEntityInfoFromJson(Map<String, dynamic> json) {
   return GqlEntityInfo(
     tableName: json['tableName'] as String,
-    pkField: json['pkField'] == null
+    pkFields: (json['pkFields'] as List)
+        ?.map((e) => e == null
+            ? null
+            : GqlEntityPKFieldInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
+    deleteIdField: json['deleteIdField'] == null
         ? null
-        : GqlEntityPKFieldInfo.fromJson(
-            json['pkField'] as Map<String, dynamic>),
-    indexFields:
-        (json['indexFields'] as List)?.map((e) => e as String)?.toList(),
+        : EntityFieldInfo.fromJson(
+            json['deleteIdField'] as Map<String, dynamic>),
+    indexFields: (json['indexFields'] as List)
+        ?.map((e) => e == null
+        ? null
+        : EntityFieldInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
     detailFieldName: json['detailFieldName'] as String,
     detailFields:
         (json['detailFields'] as List)?.map((e) => e as String)?.toList(),
@@ -190,7 +197,8 @@ GqlEntityInfo _$GqlEntityInfoFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _$GqlEntityInfoToJson(GqlEntityInfo instance) =>
     <String, dynamic>{
       'tableName': instance.tableName,
-      'pkField': instance.pkField?.toJson(),
+      'pkFields': instance.pkFields?.map((e) => e?.toJson())?.toList(),
+      'deleteIdField': instance.deleteIdField?.toJson(),
       'indexFields': instance.indexFields,
       'detailFieldName': instance.detailFieldName,
       'detailFields': instance.detailFields,
@@ -198,17 +206,20 @@ Map<String, dynamic> _$GqlEntityInfoToJson(GqlEntityInfo instance) =>
 
 GqlEntityPKFieldInfo _$GqlEntityPKFieldInfoFromJson(Map<String, dynamic> json) {
   return GqlEntityPKFieldInfo(
-    name: json['name'] as String,
+    fieldName: json['fieldName'] as String,
     auto: json['auto'] as bool,
+    mappedFieldDataType: json['mappedFieldDataType'] as String,
   );
 }
 
 Map<String, dynamic> _$GqlEntityPKFieldInfoToJson(
         GqlEntityPKFieldInfo instance) =>
     <String, dynamic>{
-      'name': instance.name,
+      'fieldName': instance.fieldName,
       'auto': instance.auto,
+      'mappedFieldDataType': instance.mappedFieldDataType,
     };
+
 
 GqlEntityFieldInfo _$GqlEntityFieldInfoFromJson(Map<String, dynamic> json) {
   return GqlEntityFieldInfo(
@@ -222,5 +233,18 @@ Map<String, dynamic> _$GqlEntityFieldInfoToJson(GqlEntityFieldInfo instance) =>
     <String, dynamic>{
       'fieldType': instance.fieldType,
       'fieldDataType': instance.fieldDataType,
+      'mappedFieldDataType': instance.mappedFieldDataType,
+    };
+
+EntityFieldInfo _$EntityFieldInfoFromJson(Map<String, dynamic> json) {
+  return EntityFieldInfo(
+    fieldName: json['fieldName'] as String,
+    mappedFieldDataType: json['mappedFieldDataType'] as String,
+  );
+}
+
+Map<String, dynamic> _$EntityFieldInfoToJson(EntityFieldInfo instance) =>
+    <String, dynamic>{
+      'fieldName': instance.fieldName,
       'mappedFieldDataType': instance.mappedFieldDataType,
     };

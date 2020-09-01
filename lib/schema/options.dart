@@ -256,10 +256,13 @@ class GqlEntityInfo {
   final String tableName;
 
   /// Primary key field name for the table.
-  final GqlEntityPKFieldInfo pkField;
+  final List<GqlEntityPKFieldInfo> pkFields;
+
+  /// Delete key field name for the table.
+  final EntityFieldInfo deleteIdField;
 
   /// Index field columns for the table.
-  final List<String> indexFields;
+  final List<EntityFieldInfo> indexFields;
 
   /// The name of the detail field
   final String detailFieldName;
@@ -270,7 +273,8 @@ class GqlEntityInfo {
   /// Instantiates a GqlEntityInfo.
   GqlEntityInfo({
     this.tableName,
-    this.pkField,
+    this.pkFields,
+    this.deleteIdField,
     this.indexFields,
     this.detailFieldName,
     this.detailFields,
@@ -288,13 +292,20 @@ class GqlEntityInfo {
 @JsonSerializable(explicitToJson: true)
 class GqlEntityPKFieldInfo {
   /// The name of the primary key field
-  final String name;
+  final String fieldName;
 
   /// Weather this is auto incremented key
   final bool auto;
 
+  ///The type of the field
+  final String mappedFieldDataType;
+
   /// Instantiates a GqlEntityPKFieldInfo.
-  GqlEntityPKFieldInfo({this.name, this.auto});
+  GqlEntityPKFieldInfo({
+    this.fieldName,
+    this.auto,
+    this.mappedFieldDataType,
+  });
 
   /// Build a field info from a JSON map.
   factory GqlEntityPKFieldInfo.fromJson(Map<String, dynamic> json) =>
@@ -326,4 +337,26 @@ class GqlEntityFieldInfo {
 
   /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityFieldInfoToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class EntityFieldInfo {
+  /// The original data type of the field.
+  final String fieldName;
+
+  /// The mapped data type of the field.
+  final String mappedFieldDataType;
+
+  /// Instantiates a GqlEntityDetailFieldInfo.
+  EntityFieldInfo({
+    this.fieldName,
+    this.mappedFieldDataType,
+  });
+
+  /// Build a field info from a JSON map.
+  factory EntityFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$EntityFieldInfoFromJson(json);
+
+  /// Convert this field info instance to JSON.
+  Map<String, dynamic> toJson() => _$EntityFieldInfoToJson(this);
 }

@@ -261,9 +261,9 @@ void _addQueryListResponseMethods(
       ..type = MethodType.getter
       ..returns = refer('String')
       ..annotations.add(CodeExpression(Code('override')))
-      ..name = 'pkFieldName'
+      ..name = 'deleteIdFieldName'
       ..lambda = true
-      ..body = Code('\'${gqlEntityInfo.pkField.name}\'')));
+      ..body = Code('\'${gqlEntityInfo.deleteIdField.fieldName}\'')));
 
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
@@ -275,16 +275,18 @@ void _addQueryListResponseMethods(
           ? '0'
           : '${gqlQueryInfo.entryPoint}.${gqlQueryInfo.lastFetchedField}')));
 
+
     customOverrides.add(Method((m) => m
       ..type = MethodType.getter
       ..returns = refer(
-          'List<${fieldMappings[gqlEntityInfo.pkField.name].mappedFieldDataType}>')
+          'List<${fieldMappings[gqlEntityInfo.deleteIdField.fieldName]?.mappedFieldDataType ?? gqlEntityInfo.deleteIdField.fieldName}>')
       ..annotations.add(CodeExpression(Code('override')))
       ..name = 'deleteIds'
       ..lambda = true
       ..body = Code((null == gqlQueryInfo.deleteIdsField)
           ? '[]'
           : '${gqlQueryInfo.entryPoint}.${gqlQueryInfo.deleteIdsField}')));
+
 
     var rowsBody = (null == gqlQueryInfo.resultField)
         ? '${gqlQueryInfo.entryPoint}'
@@ -364,22 +366,29 @@ void _addQueryResponseMethods(
     buffer.writeln('{');
 
     // If primary key is not auto generated then add field
-    if (!gqlEntityInfo.pkField.auto) {
-      buffer.writeln(
-          '\'${ReCase(gqlEntityInfo.pkField.name).snakeCase}\': ${gqlEntityInfo.pkField.name},');
-    }
-    for (var indexField in gqlEntityInfo.indexFields) {
-      var fieldInfo = fieldMappings[indexField];
-      if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
-        buffer.writeln('\'${ReCase(indexField).snakeCase}\': ${indexField},');
-      } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
+    gqlEntityInfo.pkFields.forEach((pkField) {
+      if (!pkField.auto && _isFieldPresentInSchema(fieldMappings, pkField.fieldName)) {
         buffer.writeln(
-            '\'${ReCase(indexField).snakeCase}\': ${indexField}.toValue(),');
-      } else {
-        throw Exception(
-            'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
+            '\'${ReCase(pkField.fieldName).snakeCase}\': ${pkField.fieldName},');
+      }
+    });
+
+    for (var indexField in gqlEntityInfo.indexFields) {
+      var indexFieldName = indexField.fieldName;
+      if(_isFieldPresentInSchema(fieldMappings, indexFieldName)){
+        var fieldInfo = fieldMappings[indexFieldName];
+        if (equalsIgnoreCase(fieldInfo.fieldType, FT_PRIMITIVE)) {
+          buffer.writeln('\'${ReCase(indexFieldName).snakeCase}\': ${indexFieldName},');
+        } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
+          buffer.writeln(
+              '\'${ReCase(indexFieldName).snakeCase}\': ${indexFieldName}.toValue(),');
+        } else {
+          throw Exception(
+              'Index field can primitive or enum, but found ${fieldInfo.fieldType}');
+        }
       }
     }
+
     if (null != gqlEntityInfo.detailFieldName) {
       final detailColName = ReCase(gqlEntityInfo.detailFieldName).snakeCase;
       final detailColValue = 'jsonEncode(${gqlEntityInfo.detailFieldName})';
@@ -396,19 +405,24 @@ void _addQueryResponseMethods(
       ..lambda = true
       ..body = Code(buffer.toString())));
 
-    //add primary key value fetch for the current object if not auto generated
-    var primaryKeyValue =
-        gqlEntityInfo.pkField.auto ? null : gqlEntityInfo.pkField.name;
-    customOverrides.add(Method((m) => m
-      ..type = MethodType.getter
-      ..returns =
-          refer(fieldMappings[gqlEntityInfo.pkField.name].mappedFieldDataType)
-      ..annotations.add(CodeExpression(Code('override')))
-      ..name = 'primaryKeyValue'
-      ..lambda = true
-      ..body = Code(primaryKeyValue)));
+//    //add primary key value fetch for the current object if not auto generated
+//    gqlEntityInfo.pkFields.forEach((pkField) {
+//      var primaryKeyValue =
+//      pkField.auto ? null : pkField.name;
+//      customOverrides.add(Method((m) => m
+//        ..type = MethodType.getter
+//        ..returns =
+//        refer(fieldMappings[pkField.name]?.mappedFieldDataType ?? pkField.type)
+//        ..annotations.add(CodeExpression(Code('override')))
+//        ..name = 'primaryKeyValue'
+//        ..lambda = true
+//        ..body = Code(primaryKeyValue)));
+//    });
+
   }
 }
+
+bool _isFieldPresentInSchema(Map<String, GqlEntityFieldInfo> fieldMappings, String field) => fieldMappings[field] != null;
 
 /// Generates a [Spec] of a single fragment class definition.
 Spec fragmentClassDefinitionToSpec(FragmentClassDefinition definition) {
@@ -771,61 +785,80 @@ Spec generateEntitySpec(
   final entityFields = <Field>[];
   final parameterFields = <Parameter>[];
   //add primary key field if present
-  if (null == gqlEntityInfo.pkField) {
+  if (null == gqlEntityInfo.pkFields) {
     throw Exception(
         'Primary key is required for entity ${gqlEntityInfo.tableName}');
   }
-  var pkFieldInfo = fieldMappings[gqlEntityInfo.pkField.name];
-  if (!(equalsIgnoreCase(pkFieldInfo.fieldType, FT_PRIMITIVE) ||
-      equalsIgnoreCase(pkFieldInfo.fieldType, FT_ENUM))) {
-    throw Exception(
-        'Field type ${pkFieldInfo.fieldDataType} not supported for Primary key');
-  }
-  var pkAnnotation = gqlEntityInfo.pkField.auto
-      ? 'PrimaryKey(autoGenerate: true)'
-      : 'primaryKey';
-  var fieldType =
-      gqlEntityInfo.pkField.auto ? 'int' : pkFieldInfo.mappedFieldDataType;
-  entityFields.add(
-    Field(
-      (f) => f
-        ..name = gqlEntityInfo.pkField.name
-        ..type = refer(fieldType)
-        ..annotations.add(CodeExpression(Code(pkAnnotation)))
-        ..annotations.add(CodeExpression(Code(
-            'ColumnInfo(name: \'${ReCase(gqlEntityInfo.pkField.name).snakeCase}\')'))),
-    ),
-  );
-  parameterFields.add(
-    Parameter((p) => p
-      ..name = gqlEntityInfo.pkField.name
-      ..toThis = true
-      ..named = true),
-  );
 
-  //add other index fields
-  for (final indexField in gqlEntityInfo.indexFields) {
-    var indexFieldInfo = fieldMappings[indexField];
-    if (!(equalsIgnoreCase(indexFieldInfo.fieldType, FT_PRIMITIVE) ||
-        equalsIgnoreCase(indexFieldInfo.fieldType, FT_ENUM))) {
-      throw Exception(
-          'Unknown field type ${indexFieldInfo.fieldDataType} for index field ${indexField}');
+  gqlEntityInfo.pkFields.forEach((pkField) {
+    var pkFieldInfo = fieldMappings[pkField.fieldName];
+    if(pkFieldInfo != null){
+      if (!(equalsIgnoreCase(pkFieldInfo.fieldType, FT_PRIMITIVE) ||
+          equalsIgnoreCase(pkFieldInfo.fieldType, FT_ENUM))) {
+        throw Exception(
+            'Field type ${pkFieldInfo.fieldDataType} not supported for Primary key');
+      }
     }
+    var pkAnnotation = pkField.auto
+        ? 'PrimaryKey(autoGenerate: true)'
+        : 'primaryKey';
+    var fieldType =
+    pkField.auto ? 'int' : pkFieldInfo?.mappedFieldDataType ?? pkField.mappedFieldDataType;
     entityFields.add(
       Field(
-        (f) => f
-          ..name = indexField
-          ..type = refer(indexFieldInfo.mappedFieldDataType)
-          ..annotations.add(CodeExpression(
-              Code('ColumnInfo(name: \'${ReCase(indexField).snakeCase}\')'))),
+            (f) => f
+          ..name = pkField.fieldName
+          ..type = refer(fieldType)
+          ..annotations.add(CodeExpression(Code(pkAnnotation)))
+          ..annotations.add(CodeExpression(Code(
+              'ColumnInfo(name: \'${ReCase(pkField.fieldName).snakeCase}\')'))),
       ),
     );
     parameterFields.add(
       Parameter((p) => p
-        ..name = indexField
+        ..name = pkField.fieldName
         ..toThis = true
         ..named = true),
     );
+  });
+
+
+  //add other index fields
+  for (final indexField in gqlEntityInfo.indexFields) {
+
+    var indexFieldName = indexField.fieldName;
+    var mappedFieldDataType = indexField.mappedFieldDataType;
+
+    var indexFieldInfo = fieldMappings[indexFieldName];
+
+    if(indexFieldInfo != null){
+      if (!(equalsIgnoreCase(indexFieldInfo.fieldType, FT_PRIMITIVE) ||
+          equalsIgnoreCase(indexFieldInfo.fieldType, FT_ENUM))) {
+        throw Exception(
+            'Unknown field type ${indexFieldInfo.fieldDataType} for index field ${indexFieldName}');
+      }
+      mappedFieldDataType = indexFieldInfo.mappedFieldDataType;
+    }
+
+    assert(mappedFieldDataType != null,"No Type defined for ${indexFieldName}");
+
+    if(mappedFieldDataType != null){
+      entityFields.add(
+        Field(
+              (f) => f
+            ..name = indexFieldName
+            ..type = refer(mappedFieldDataType)
+            ..annotations.add(CodeExpression(
+                Code('ColumnInfo(name: \'${ReCase(indexFieldName).snakeCase}\')'))),
+        ),
+      );
+      parameterFields.add(
+        Parameter((p) => p
+          ..name = indexFieldName
+          ..toThis = true
+          ..named = true),
+      );
+    }
   }
 
   var entityMethods = <Method>[];
