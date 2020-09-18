@@ -234,10 +234,11 @@ Map<String, GqlEntityFieldInfo> getFieldMappings(
           fieldDataType: dataType,
           mappedFieldDataType: dataType);
     } else if (dataType.startsWith(listPrefix)) {
+      var mappedFieldDataType = dataType.replaceAll('List<', '').replaceAll('>', '');
       acc[element.name.name] = GqlEntityFieldInfo(
           fieldType: FT_LIST,
           fieldDataType: dataType,
-          mappedFieldDataType: 'String');
+          mappedFieldDataType: mappedFieldDataType);
     } else {
       acc[element.name.name] = GqlEntityFieldInfo(
           fieldType: FT_OBJECT,

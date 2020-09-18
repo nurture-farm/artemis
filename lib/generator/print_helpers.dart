@@ -342,8 +342,15 @@ void _addQueryResponseMethods(
         } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_ENUM)) {
           buffer.writeln('\'${field}\': ${field}.toValue(),');
         } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_LIST)) {
-          buffer.writeln(
-              '\'${field}\': ${field}?.map((e) => e?.toJson())?.toList(),');
+
+          if(!sqliteTypes.contains(fieldInfo.mappedFieldDataType)){
+            buffer.writeln(
+                '\'${field}\': ${field}?.map((e) => e?.toJson())?.toList(),');
+          }
+          else{
+            buffer.writeln(
+                '\'${field}\': ${field},');
+          }
         } else if (equalsIgnoreCase(fieldInfo.fieldType, FT_OBJECT)) {
           buffer.writeln('\'${field}\': ${field}?.toJson(),');
         }
