@@ -177,20 +177,23 @@ GqlEntityInfo _$GqlEntityInfoFromJson(Map<String, dynamic> json) {
     pkFields: (json['pkFields'] as List)
         ?.map((e) => e == null
             ? null
-            : GqlEntityPKFieldInfo.fromJson(e as Map<String, dynamic>))
+            : GqlEntityFieldInfo.fromJson(e as Map<String, dynamic>))
         ?.toList(),
     deleteIdField: json['deleteIdField'] == null
         ? null
-        : EntityFieldInfo.fromJson(
+        : GqlEntityFieldInfo.fromJson(
             json['deleteIdField'] as Map<String, dynamic>),
     indexFields: (json['indexFields'] as List)
         ?.map((e) => e == null
-        ? null
-        : EntityFieldInfo.fromJson(e as Map<String, dynamic>))
+            ? null
+            : GqlEntityFieldInfo.fromJson(e as Map<String, dynamic>))
         ?.toList(),
     detailFieldName: json['detailFieldName'] as String,
-    detailFields:
-        (json['detailFields'] as List)?.map((e) => e as String)?.toList(),
+    detailFields: (json['detailFields'] as List)
+        ?.map((e) => e == null
+            ? null
+            : GqlEntityFieldInfo.fromJson(e as Map<String, dynamic>))
+        ?.toList(),
   );
 }
 
@@ -204,47 +207,28 @@ Map<String, dynamic> _$GqlEntityInfoToJson(GqlEntityInfo instance) =>
       'detailFields': instance.detailFields,
     };
 
-GqlEntityPKFieldInfo _$GqlEntityPKFieldInfoFromJson(Map<String, dynamic> json) {
-  return GqlEntityPKFieldInfo(
-    fieldName: json['fieldName'] as String,
-    auto: json['auto'] as bool,
-    mappedFieldDataType: json['mappedFieldDataType'] as String,
-  );
-}
-
-Map<String, dynamic> _$GqlEntityPKFieldInfoToJson(
-        GqlEntityPKFieldInfo instance) =>
-    <String, dynamic>{
-      'fieldName': instance.fieldName,
-      'auto': instance.auto,
-      'mappedFieldDataType': instance.mappedFieldDataType,
-    };
-
-
 GqlEntityFieldInfo _$GqlEntityFieldInfoFromJson(Map<String, dynamic> json) {
+  $checkKeys(json, requiredKeys: const [
+    'fieldName',
+    'isAutoIncremented',
+    'isCustomField',
+    'fieldType',
+    'fieldDataType'
+  ]);
   return GqlEntityFieldInfo(
-    fieldType: json['fieldType'] as String,
+    fieldName: json['fieldName'] as String,
+    isAutoIncremented: json['isAutoIncremented'] as bool ?? false,
+    isCustomField: json['isCustomField'] as bool ?? false,
+    fieldType: json['fieldType'] as String ?? 'PRIMITIVE',
     fieldDataType: json['fieldDataType'] as String,
-    mappedFieldDataType: json['mappedFieldDataType'] as String,
   );
 }
 
 Map<String, dynamic> _$GqlEntityFieldInfoToJson(GqlEntityFieldInfo instance) =>
     <String, dynamic>{
+      'fieldName': instance.fieldName,
+      'isAutoIncremented': instance.isAutoIncremented,
+      'isCustomField': instance.isCustomField,
       'fieldType': instance.fieldType,
       'fieldDataType': instance.fieldDataType,
-      'mappedFieldDataType': instance.mappedFieldDataType,
-    };
-
-EntityFieldInfo _$EntityFieldInfoFromJson(Map<String, dynamic> json) {
-  return EntityFieldInfo(
-    fieldName: json['fieldName'] as String,
-    mappedFieldDataType: json['mappedFieldDataType'] as String,
-  );
-}
-
-Map<String, dynamic> _$EntityFieldInfoToJson(EntityFieldInfo instance) =>
-    <String, dynamic>{
-      'fieldName': instance.fieldName,
-      'mappedFieldDataType': instance.mappedFieldDataType,
     };
