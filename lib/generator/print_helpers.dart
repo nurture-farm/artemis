@@ -40,8 +40,10 @@ Spec enumDefinitionExtensionToSpec(EnumDefinition definition) {
     ..writeln('  String toValue() {')
     ..writeln('    return _\$${enumName}EnumMap[this];')
     ..writeln('  }\n')
-    ..writeln('  ${enumName} fromValue(String name) {')
-    ..writeln('    return ${enumName}.artemisUnknown;')
+    ..writeln('  ${enumName} fromValue(String value) {')
+    ..writeln('    return _\$enumDecodeNullable(')
+    ..writeln('      _\$${enumName}EnumMap, value,')
+    ..writeln('      unknownValue: ${enumName}.artemisUnknown);')
     ..writeln('  }')
     ..writeln('}');
   return CodeExpression(Code(buffer.toString()));

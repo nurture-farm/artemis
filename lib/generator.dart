@@ -26,6 +26,11 @@ final EnumValueDefinition ARTEMIS_UNKNOWN = EnumValueDefinition(
   name: EnumValueName(name: 'ARTEMIS_UNKNOWN'),
 );
 
+/// Enum value used for default placeholder to fetch enum from string value
+final EnumValueDefinition ENUM_INSTANCE = EnumValueDefinition(
+  name: EnumValueName(name: 'ENUM_INSTANCE'),
+);
+
 /// Generate queries definitions from a GraphQL schema and a list of queries,
 /// given Artemis options and schema mappings.
 LibraryDefinition generateLibrary(
@@ -691,7 +696,8 @@ class _CanonicalVisitor extends RecursiveVisitor {
                 annotations: _proceedDeprecated(ev.directives),
               ))
           .toList()
-            ..add(ARTEMIS_UNKNOWN),
+            ..add(ARTEMIS_UNKNOWN)
+            ..add(ENUM_INSTANCE),
     ));
   }
 
