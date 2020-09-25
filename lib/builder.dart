@@ -9,6 +9,7 @@ import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:gql/ast.dart';
 import 'package:gql/language.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 import './generator.dart';
 import './generator/print_helpers.dart';
@@ -156,12 +157,10 @@ class GraphQLQueryBuilder implements Builder {
         gqlMetadataInfo =
             await _getGqlMetadataInfo(buildStep, schemaMap.metadataFile);
       }
-      var fieldMappings = getFieldMappings(libDefinition.queries);
       writeLibraryDefinitionToBuffer(
         buffer,
         libDefinition,
         gqlMetadataInfo,
-        fieldMappings,
       );
 
       await buildStep.writeAsString(outputFileId, buffer.toString());
@@ -193,7 +192,6 @@ class GraphQLQueryBuilder implements Builder {
             schemaMap.output,
             entityOutputFile,
             gqlEntityInfo,
-            fieldMappings,
           );
           await buildStep.writeAsString(entityOutputFileId, buffer.toString());
         }
@@ -215,8 +213,9 @@ class GraphQLQueryBuilder implements Builder {
         },
       ).first;
       return gqlMetadataInfo;
-    } catch (e) {
-      throw Exception('''Could not parse metadata file $metadataFile ${e}''');
+    } on MissingRequiredKeysException catch (e, s) {
+      throw Exception(
+          '''Could not parse metadata file $metadataFile ${e.message} $s''');
     }
   }
 }
