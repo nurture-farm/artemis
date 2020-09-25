@@ -157,7 +157,6 @@ class GraphQLQueryBuilder implements Builder {
         gqlMetadataInfo =
             await _getGqlMetadataInfo(buildStep, schemaMap.metadataFile);
       }
-      //final fieldMappings = getFieldMappings(libDefinition.queries);
       writeLibraryDefinitionToBuffer(
         buffer,
         libDefinition,
