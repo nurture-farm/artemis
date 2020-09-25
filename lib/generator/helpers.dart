@@ -187,6 +187,7 @@ List<String> sqliteTypes = const [
 
 /// Field type of enum
 const String FT_PRIMITIVE = 'PRIMITIVE';
+const String FT_PRIMITIVE_LIST = 'PRIMITIVE_LIST';
 const String FT_ENUM = 'ENUM';
 const String FT_LIST = 'LIST';
 const String FT_OBJECT = 'OBJECT';
@@ -201,51 +202,3 @@ const String EMPTY_QUERY_LIST_RESPONSE = 'EmptyQueryListResponse';
 
 /// A constant specifying query detail response type object
 const String QUERY_DETAIL_RESPONSE = 'QueryDetailResponse';
-
-/// Get field mappings used in the current schema map
-Map<String, GqlEntityFieldInfo> getFieldMappings(
-    Iterable<QueryDefinition> queries) {
-  final definitions =
-      queries.map((e) => e.classes.map((e) => e)).expand((e) => e).toList();
-
-  final fragments = definitions.whereType<FragmentClassDefinition>();
-  final classes = definitions.whereType<ClassDefinition>();
-  final enums = definitions.whereType<EnumDefinition>();
-
-  final enumNames = enums.map((e) => e.name.namePrintable);
-
-  final allProperties = fragments
-      .map((e) => e.properties)
-      .expand((element) => element)
-      .toList()
-      .followedBy(classes.map((e) => e.properties).expand((element) => element))
-      .toList()
-      .fold<Map<String, GqlEntityFieldInfo>>(<String, GqlEntityFieldInfo>{},
-          (acc, element) {
-    final dataType = element.type.namePrintable;
-    if (enumNames.contains(dataType)) {
-      acc[element.name.name] = GqlEntityFieldInfo(
-          fieldType: FT_ENUM,
-          fieldDataType: dataType,
-          mappedFieldDataType: 'String');
-    } else if (sqliteTypes.contains(dataType)) {
-      acc[element.name.name] = GqlEntityFieldInfo(
-          fieldType: FT_PRIMITIVE,
-          fieldDataType: dataType,
-          mappedFieldDataType: dataType);
-    } else if (dataType.startsWith(listPrefix)) {
-      var mappedFieldDataType = dataType.replaceAll('List<', '').replaceAll('>', '');
-      acc[element.name.name] = GqlEntityFieldInfo(
-          fieldType: FT_LIST,
-          fieldDataType: dataType,
-          mappedFieldDataType: mappedFieldDataType);
-    } else {
-      acc[element.name.name] = GqlEntityFieldInfo(
-          fieldType: FT_OBJECT,
-          fieldDataType: dataType,
-          mappedFieldDataType: 'String');
-    }
-    return acc;
-  });
-  return allProperties;
-}

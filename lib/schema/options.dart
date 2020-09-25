@@ -256,13 +256,13 @@ class GqlEntityInfo {
   final String tableName;
 
   /// Primary key field name for the table.
-  final List<GqlEntityPKFieldInfo> pkFields;
+  final List<GqlEntityFieldInfo> pkFields;
 
   /// Delete key field name for the table.
-  final EntityFieldInfo deleteIdField;
+  final GqlEntityFieldInfo deleteIdField;
 
   /// Index field columns for the table.
-  final List<EntityFieldInfo> indexFields;
+  final List<GqlEntityFieldInfo> indexFields;
 
   /// The name of the detail field
   final String detailFieldName;
@@ -288,48 +288,36 @@ class GqlEntityInfo {
   Map<String, dynamic> toJson() => _$GqlEntityInfoToJson(this);
 }
 
-/// Primary key Field info
-@JsonSerializable(explicitToJson: true)
-class GqlEntityPKFieldInfo {
-  /// The name of the primary key field
-  final String fieldName;
-
-  /// Weather this is auto incremented key
-  final bool auto;
-
-  ///The type of the field
-  final String mappedFieldDataType;
-
-  /// Instantiates a GqlEntityPKFieldInfo.
-  GqlEntityPKFieldInfo({
-    this.fieldName,
-    this.auto,
-    this.mappedFieldDataType,
-  });
-
-  /// Build a field info from a JSON map.
-  factory GqlEntityPKFieldInfo.fromJson(Map<String, dynamic> json) =>
-      _$GqlEntityPKFieldInfoFromJson(json);
-
-  /// Convert this field info instance to JSON.
-  Map<String, dynamic> toJson() => _$GqlEntityPKFieldInfoToJson(this);
-}
-
 /// Field info for columns of table.
 @JsonSerializable(explicitToJson: true)
 class GqlEntityFieldInfo {
+  /// The name of the key field
+  @JsonKey(required: true, nullable: false)
+  final String fieldName;
+
+  /// Weather this is auto incremented primary key
+  @JsonKey(required: false, defaultValue: false)
+  final bool isAutoIncremented;
+
+  /// Weather this is custom field not present in graphql schema
+  @JsonKey(required: false, defaultValue: false)
+  final bool isCustomField;
+
   /// The type of field for this field can be one of PRIMITIVE,ENUM,LIST,OBJECT
+  @JsonKey(required: false, defaultValue: 'PRIMITIVE')
   final String fieldType;
 
   /// The original data type of the field.
+  @JsonKey(required: true, nullable: false)
   final String fieldDataType;
-
-  /// The mapped data type of the field.
-  final String mappedFieldDataType;
 
   /// Instantiates a GqlEntityDetailFieldInfo.
   GqlEntityFieldInfo(
-      {this.fieldType, this.fieldDataType, this.mappedFieldDataType});
+      {this.fieldName,
+      this.isAutoIncremented,
+      this.isCustomField,
+      this.fieldType,
+      this.fieldDataType});
 
   /// Build a field info from a JSON map.
   factory GqlEntityFieldInfo.fromJson(Map<String, dynamic> json) =>
@@ -337,26 +325,4 @@ class GqlEntityFieldInfo {
 
   /// Convert this field info instance to JSON.
   Map<String, dynamic> toJson() => _$GqlEntityFieldInfoToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true)
-class EntityFieldInfo {
-  /// The original data type of the field.
-  final String fieldName;
-
-  /// The mapped data type of the field.
-  final String mappedFieldDataType;
-
-  /// Instantiates a GqlEntityDetailFieldInfo.
-  EntityFieldInfo({
-    this.fieldName,
-    this.mappedFieldDataType,
-  });
-
-  /// Build a field info from a JSON map.
-  factory EntityFieldInfo.fromJson(Map<String, dynamic> json) =>
-      _$EntityFieldInfoFromJson(json);
-
-  /// Convert this field info instance to JSON.
-  Map<String, dynamic> toJson() => _$EntityFieldInfoToJson(this);
 }
